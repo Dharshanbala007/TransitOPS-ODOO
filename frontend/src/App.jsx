@@ -6,6 +6,8 @@ import Login from './pages/Login';
 import Vehicles from './pages/Vehicles';
 import Drivers from './pages/Drivers';
 import DashboardPlaceholder from './pages/DashboardPlaceholder';
+import Trips from './pages/Trips';
+import Maintenance from './pages/Maintenance';
 import BackgroundWaves from './components/BackgroundWaves';
 import GlassCard from './components/GlassCard';
 import { Wrench } from 'lucide-react';
@@ -33,10 +35,10 @@ function ComingSoon({ title, member }) {
 export default function App() {
   return (
     <AuthProvider>
-      {/* Global Wavy Backdrop & Noise Layer */}
-      <BackgroundWaves />
-      
       <Router>
+        {/* Global Wavy Backdrop & Noise Layer */}
+        <BackgroundWaves />
+        
         <Routes>
           <Route path="/login" element={<Login />} />
           
@@ -71,7 +73,7 @@ export default function App() {
             path="/trips" 
             element={
               <ProtectedRoute>
-                <ComingSoon title="Trip Management LifeCycle" member="2" />
+                <Trips />
               </ProtectedRoute>
             } 
           />
@@ -80,7 +82,7 @@ export default function App() {
             path="/maintenance" 
             element={
               <ProtectedRoute>
-                <ComingSoon title="Maintenance Registry & Logs" member="2" />
+                <Maintenance />
               </ProtectedRoute>
             } 
           />

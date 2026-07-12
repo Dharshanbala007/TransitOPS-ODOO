@@ -172,7 +172,300 @@ async function runTests() {
     console.error('❌ Test 7: Failed with error:', err.message);
   }
 
+  // --- TRIP & MAINTENANCE LIFE-CYCLE VERIFICATION TESTS ---
+  console.log('\n--- STARTING TRIP & MAINTENANCE LIFE-CYCLE TESTS ---');
+
+  let testVehicleId = 0;
+  let testDriverId = 0;
+  let testTripId = 0;
+
+  // Setup: Fetch available vehicle and driver to use for trip tests
+  try {
+    const vRes = await fetch(`${host}/trips/eligible-vehicles`, {
+      headers: { 'Authorization': `Bearer ${managerToken}` }
+    });
+    const vehicles = await vRes.json();
+    const dRes = await fetch(`${host}/trips/eligible-drivers`, {
+      headers: { 'Authorization': `Bearer ${managerToken}` }
+    });
+    const drivers = await dRes.json();
+
+    if (vehicles.length > 0 && drivers.length > 0) {
+      testVehicleId = vehicles[0].id;
+      testDriverId = drivers[0].id;
+      console.log(`✔ Setup: Found test vehicle ID ${testVehicleId} (${vehicles[0].reg_no}, max load: ${vehicles[0].max_load_kg}kg) and driver ID ${testDriverId}`);
+    } else {
+      console.error('❌ Setup: No available vehicles or drivers to perform trip tests.');
+      return;
+    }
+  } catch (err) {
+    console.error('❌ Setup failed:', err.message);
+    return;
+  }
+
+  // Test 8: Trip weight rule check (Cargo Weight > Max Load)
+  try {
+    const invalidWeightRes = await fetch(`${host}/trips`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${managerToken}`
+      },
+      body: JSON.stringify({
+        source: 'Warehouse A',
+        destination: 'Retail Hub B',
+        vehicle_id: testVehicleId,
+        driver_id: testDriverId,
+        cargo_weight_kg: 999999, // Way above max load
+        planned_distance_km: 150,
+        revenue: 800
+      })
+    });
+    const invalidData = await invalidWeightRes.json();
+    if (invalidWeightRes.status === 400 && invalidData.error.includes('exceeds vehicle max load')) {
+      console.log(`✔ Test 8: Invalid cargo weight successfully rejected with message: "${invalidData.error}"`);
+    } else {
+      console.error('❌ Test 8: Trip with invalid cargo weight was not rejected. Status:', invalidWeightRes.status, 'Error:', invalidData.error);
+    }
+  } catch (err) {
+    console.error('❌ Test 8 Failed with error:', err.message);
+  }
+
+  // Test 9: Valid Trip creation (Draft status)
+  try {
+    const validRes = await fetch(`${host}/trips`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${managerToken}`
+      },
+      body: JSON.stringify({
+        source: 'Warehouse A',
+        destination: 'Retail Hub B',
+        vehicle_id: testVehicleId,
+        driver_id: testDriverId,
+        cargo_weight_kg: 100, // Valid load
+        planned_distance_km: 150,
+        revenue: 800
+      })
+    });
+    const tripData = await validRes.json();
+    if (validRes.ok && tripData.status === 'Draft') {
+      testTripId = tripData.id;
+      console.log(`✔ Test 9: Valid trip created successfully. ID: ${testTripId}, Status: ${tripData.status}`);
+    } else {
+      console.error('❌ Test 9: Valid trip creation failed:', tripData.error);
+    }
+  } catch (err) {
+    console.error('❌ Test 9 Failed with error:', err.message);
+  }
+
+  // Test 10: Dispatch Trip (Draft -> Dispatched) & Status changes
+  try {
+    const dispatchRes = await fetch(`${host}/trips/${testTripId}/dispatch`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${managerToken}` }
+    });
+    const dispData = await dispatchRes.json();
+    if (dispatchRes.ok && dispData.status === 'Dispatched') {
+      console.log(`✔ Test 10a: Trip ID ${testTripId} successfully Dispatched.`);
+      
+      // Verify that vehicle & driver status updated to "On Trip"
+      const vCheck = await fetch(`${host}/vehicles`, {
+        headers: { 'Authorization': `Bearer ${managerToken}` }
+      });
+      const allVehicles = await vCheck.json();
+      const testVehicle = allVehicles.find(v => v.id === testVehicleId);
+      
+      const dCheck = await fetch(`${host}/drivers`, {
+        headers: { 'Authorization': `Bearer ${managerToken}` }
+      });
+      const allDrivers = await dCheck.json();
+      const testDriver = allDrivers.find(d => d.id === testDriverId);
+
+      if (testVehicle.status === 'On Trip' && testDriver.status === 'On Trip') {
+        console.log(`✔ Test 10b: Vehicle status (${testVehicle.status}) and Driver status (${testDriver.status}) correctly updated to "On Trip".`);
+      } else {
+        console.error(`❌ Test 10b: Incorrect statuses. Vehicle: ${testVehicle.status}, Driver: ${testDriver.status}`);
+      }
+    } else {
+      console.error('❌ Test 10a: Dispatch trip failed:', dispData.error);
+    }
+  } catch (err) {
+    console.error('❌ Test 10 Failed with error:', err.message);
+  }
+
+  // Test 11: Complete Trip (Dispatched -> Completed) & Odometer updates & Fuel Log
+  try {
+    // 11a. Test odometer validation (less than current)
+    const odoCheckRes = await fetch(`${host}/trips/${testTripId}/complete`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${managerToken}`
+      },
+      body: JSON.stringify({
+        final_odometer_km: -10, // Invalid odometer
+        fuel_consumed_l: 50
+      })
+    });
+    const odoErr = await odoCheckRes.json();
+    if (odoCheckRes.status === 400 && odoErr.error.includes('cannot be less than')) {
+      console.log(`✔ Test 11a: Odometer validation correctly rejected: "${odoErr.error}"`);
+    } else {
+      console.error('❌ Test 11a: Odometer check bypassed. Status:', odoCheckRes.status, 'Error:', odoErr.error);
+    }
+
+    // Get current vehicle odometer to submit a valid final odometer
+    const vCheck = await fetch(`${host}/vehicles`, {
+      headers: { 'Authorization': `Bearer ${managerToken}` }
+    });
+    const allVehicles = await vCheck.json();
+    const currentOdo = allVehicles.find(v => v.id === testVehicleId).odometer_km;
+    const finalOdo = currentOdo + 150;
+
+    // 11b. Valid Trip completion
+    const completeRes = await fetch(`${host}/trips/${testTripId}/complete`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${managerToken}`
+      },
+      body: JSON.stringify({
+        final_odometer_km: finalOdo,
+        fuel_consumed_l: 45.5
+      })
+    });
+    const compData = await completeRes.json();
+    if (completeRes.ok && compData.status === 'Completed') {
+      console.log(`✔ Test 11b: Trip completed successfully.`);
+
+      // Verify vehicle odometer and statuses updated
+      const vCheckAfter = await fetch(`${host}/vehicles`, {
+        headers: { 'Authorization': `Bearer ${managerToken}` }
+      });
+      const allVehiclesAfter = await vCheckAfter.json();
+      const testVehicleAfter = allVehiclesAfter.find(v => v.id === testVehicleId);
+
+      const dCheckAfter = await fetch(`${host}/drivers`, {
+        headers: { 'Authorization': `Bearer ${managerToken}` }
+      });
+      const allDriversAfter = await dCheckAfter.json();
+      const testDriverAfter = allDriversAfter.find(d => d.id === testDriverId);
+
+      if (testVehicleAfter.odometer_km === finalOdo && testVehicleAfter.status === 'Available' && testDriverAfter.status === 'Available') {
+        console.log(`✔ Test 11c: Vehicle odometer updated to ${testVehicleAfter.odometer_km} km. Vehicle and Driver released back to "Available".`);
+      } else {
+        console.error(`❌ Test 11c: Validation failed. Vehicle Odometer: ${testVehicleAfter.odometer_km}, Status: ${testVehicleAfter.status}, Driver Status: ${testDriverAfter.status}`);
+      }
+    } else {
+      console.error('❌ Test 11b: Valid trip completion failed:', compData.error);
+    }
+  } catch (err) {
+    console.error('❌ Test 11 Failed with error:', err.message);
+  }
+
+  // Test 12: Maintenance (Open log sets In Shop, excludes from eligible lists, Close log restores Available)
+  try {
+    // 12a. Open maintenance log
+    const openMaintRes = await fetch(`${host}/maintenance`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${managerToken}`
+      },
+      body: JSON.stringify({
+        vehicle_id: testVehicleId,
+        type: 'Engine',
+        cost: 450,
+        notes: 'Checking engine check light.'
+      })
+    });
+    const maintData = await openMaintRes.json();
+    if (openMaintRes.ok && maintData.status === 'Active') {
+      console.log(`✔ Test 12a: Maintenance log opened successfully. ID: ${maintData.id}`);
+
+      // Verify vehicle status is now In Shop
+      const vCheck = await fetch(`${host}/vehicles`, {
+        headers: { 'Authorization': `Bearer ${managerToken}` }
+      });
+      const allVehicles = await vCheck.json();
+      const testVehicle = allVehicles.find(v => v.id === testVehicleId);
+      if (testVehicle.status === 'In Shop') {
+        console.log(`✔ Test 12b: Vehicle is now set to "In Shop".`);
+      } else {
+        console.error(`❌ Test 12b: Incorrect vehicle status: ${testVehicle.status}`);
+      }
+
+      // Verify vehicle is excluded from eligible vehicles list for trips
+      const eligibleRes = await fetch(`${host}/trips/eligible-vehicles`, {
+        headers: { 'Authorization': `Bearer ${managerToken}` }
+      });
+      const eligibleVehicles = await eligibleRes.json();
+      const isStillAvailable = eligibleVehicles.some(v => v.id === testVehicleId);
+      if (!isStillAvailable) {
+        console.log(`✔ Test 12c: Vehicle in maintenance successfully excluded from eligible dispatch list.`);
+      } else {
+        console.error('❌ Test 12c: Vehicle in maintenance is still present in eligible dispatch list!');
+      }
+
+      // 12d. Close maintenance log
+      const closeRes = await fetch(`${host}/maintenance/${maintData.id}/close`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${managerToken}` }
+      });
+      const closedData = await closeRes.json();
+      if (closeRes.ok && closedData.status === 'Closed') {
+        console.log(`✔ Test 12d: Maintenance log closed successfully.`);
+
+        // Verify vehicle status returned to Available
+        const vCheckAfter = await fetch(`${host}/vehicles`, {
+          headers: { 'Authorization': `Bearer ${managerToken}` }
+        });
+        const allVehiclesAfter = await vCheckAfter.json();
+        const testVehicleAfter = allVehiclesAfter.find(v => v.id === testVehicleId);
+        if (testVehicleAfter.status === 'Available') {
+          console.log(`✔ Test 12e: Vehicle status successfully restored to "Available".`);
+        } else {
+          console.error(`❌ Test 12e: Incorrect vehicle status after closing maintenance: ${testVehicleAfter.status}`);
+        }
+      } else {
+        console.error('❌ Test 12d: Failed to close maintenance log:', closedData.error);
+      }
+    } else {
+      console.error('❌ Test 12a: Failed to open maintenance log:', maintData.error);
+    }
+  } catch (err) {
+    console.error('❌ Test 12 Failed with error:', err.message);
+  }
+
+  // Test 13: RBAC block (Driver role blocked from opening maintenance logs)
+  try {
+    const res = await fetch(`${host}/maintenance`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${driverToken}`
+      },
+      body: JSON.stringify({
+        vehicle_id: testVehicleId,
+        type: 'Brakes',
+        cost: 200
+      })
+    });
+    const data = await res.json();
+    if (res.status === 403) {
+      console.log(`✔ Test 13: Driver correctly blocked from opening maintenance logs (403 Forbidden). Error message: "${data.error}"`);
+    } else {
+      console.error('❌ Test 13: Driver role not blocked from maintenance. Status:', res.status);
+    }
+  } catch (err) {
+    console.error('❌ Test 13 Failed with error:', err.message);
+  }
+
+  console.log('--- ALL TRIP & MAINTENANCE TESTS COMPLETED ---');
   console.log('--- ALL API TESTS COMPLETED ---');
 }
 
 runTests();
+

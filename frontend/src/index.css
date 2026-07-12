@@ -194,11 +194,6 @@
   }
 }
 
-/* Hide default cursor scoped to login page wrapper */
-.login-page-wrapper,
-.login-page-wrapper * {
-  cursor: none !important;
-}
 
 /* Override chrome/safari autofill background overrides to preserve glassmorphism */
 input:-webkit-autofill,

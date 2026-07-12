@@ -5,7 +5,6 @@ import { Lock, Mail, AlertTriangle, Car } from 'lucide-react';
 import GlassCard from '../components/GlassCard';
 import PrimaryButton from '../components/PrimaryButton';
 import { motion } from 'framer-motion';
-import CustomCursor from '../components/CustomCursor';
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -56,8 +55,6 @@ export default function Login() {
   return (
     <div className="login-page-wrapper min-h-screen w-screen flex flex-col items-center justify-center p-6 relative overflow-hidden bg-transparent z-10 select-none">
       {/* Scope custom cursor with white sparks exclusively inside the login page wrapper */}
-      <CustomCursor />
-
       <motion.div
         initial={{ opacity: 0, scale: 0.96 }}
         animate={{ opacity: 1, scale: 1 }}

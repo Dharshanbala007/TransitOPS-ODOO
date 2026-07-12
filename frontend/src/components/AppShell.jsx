@@ -31,8 +31,8 @@ export default function AppShell({ children }) {
     { name: 'Dashboard', path: '/', icon: LayoutDashboard },
     { name: 'Vehicle Registry', path: '/vehicles', icon: Car },
     { name: 'Driver Management', path: '/drivers', icon: Users },
-    { name: 'Trip Management', path: '/trips', icon: Route, placeholder: true },
-    { name: 'Maintenance', path: '/maintenance', icon: Wrench, placeholder: true },
+    { name: 'Trip Management', path: '/trips', icon: Route },
+    { name: 'Maintenance', path: '/maintenance', icon: Wrench },
     { name: 'Fuel & Expenses', path: '/expenses', icon: Fuel, placeholder: true },
     { name: 'Reports', path: '/reports', icon: BarChart3, placeholder: true },
   ];
@@ -165,7 +165,7 @@ export default function AppShell({ children }) {
                 <Database className="h-3 w-3 text-[#6E6EF6]" />
                 DATABASE
               </span>
-              <span className="text-white font-mono">SQLITE SEED</span>
+              <span className="text-[#6E6EF6] font-mono">MYSQL</span>
             </div>
           </div>
         </div>
