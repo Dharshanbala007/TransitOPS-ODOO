@@ -1,0 +1,100 @@
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id       Int    @id @default(autoincrement())
+  email    String @unique
+  password String
+  name     String
+  role     String // FleetManager | Driver | SafetyOfficer | FinancialAnalyst
+}
+
+model Vehicle {
+  id               Int              @id @default(autoincrement())
+  reg_no           String           @unique
+  name             String
+  type             String // e.g. Truck, Van, Sedan
+  max_load_kg      Float
+  odometer_km      Float
+  acquisition_cost Float
+  status           String // Available | On Trip | In Shop | Retired
+  region           String
+  trips            Trip[]
+  maintenanceLogs  MaintenanceLog[]
+  fuelLogs         FuelLog[]
+  expenses         Expense[]
+}
+
+model Driver {
+  id               Int      @id @default(autoincrement())
+  name             String
+  license_no       String   @unique
+  license_category String
+  license_expiry   DateTime
+  contact_number   String
+  safety_score     Float    @default(5.0) // 1.0 - 5.0 scale
+  status           String // Available | On Trip | Off Duty | Suspended
+  trips            Trip[]
+}
+
+model Trip {
+  id                  Int       @id @default(autoincrement())
+  source              String
+  destination         String
+  vehicle_id          Int
+  driver_id           Int
+  cargo_weight_kg     Float
+  planned_distance_km Float
+  revenue             Float
+  status              String // Draft | Dispatched | Completed | Cancelled
+  final_odometer_km   Float?
+  fuel_consumed_l     Float?
+  created_at          DateTime  @default(now())
+  updated_at          DateTime  @updatedAt
+  
+  vehicle             Vehicle   @relation(fields: [vehicle_id], references: [id])
+  driver              Driver    @relation(fields: [driver_id], references: [id])
+  fuelLogs            FuelLog[]
+}
+
+model MaintenanceLog {
+  id          Int       @id @default(autoincrement())
+  vehicle_id  Int
+  type        String // e.g. Routine, Brake, Engine
+  cost        Float
+  opened_date DateTime  @default(now())
+  closed_date DateTime?
+  status      String // Active | Closed
+  notes       String?
+  
+  vehicle     Vehicle   @relation(fields: [vehicle_id], references: [id])
+}
+
+model FuelLog {
+  id         Int      @id @default(autoincrement())
+  vehicle_id Int
+  trip_id    Int?
+  liters     Float
+  cost       Float
+  date       DateTime @default(now())
+  
+  vehicle    Vehicle  @relation(fields: [vehicle_id], references: [id])
+  trip       Trip?    @relation(fields: [trip_id], references: [id])
+}
+
+model Expense {
+  id         Int      @id @default(autoincrement())
+  vehicle_id Int
+  category   String // e.g. Insurance, Toll, Permit
+  amount     Float
+  date       DateTime @default(now())
+  notes      String?
+  
+  vehicle    Vehicle  @relation(fields: [vehicle_id], references: [id])
+}
