@@ -285,15 +285,14 @@ export default function Maintenance() {
               <div className="flex items-center gap-2 justify-end ml-auto">
                 <SlidersHorizontal className="h-4 w-4 text-[#6E6EF6]" />
                 <select
-                  value={filterStatus}
-                  onChange={(e) => setFilterStatus(e.target.value)}
-                  className="bg-transparent border border-white/10 text-slate-300 text-xs rounded-xl px-3 py-2 outline-none focus:border-[#6E6EF6]/40 transition-all font-medium"
-                  style={{ background: 'rgba(255,255,255,0.03)', backdropFilter: 'blur(8px)' }}
-                >
-                  <option value="All" className="bg-[#121214]">All Records</option>
-                  <option value="Active" className="bg-[#121214]">Active</option>
-                  <option value="Closed" className="bg-[#121214]">Closed</option>
-                </select>
+                   value={filterStatus}
+                   onChange={(e) => setFilterStatus(e.target.value)}
+                   className="glass-select text-slate-300 text-xs font-medium"
+                 >
+                   <option value="All">All Records</option>
+                   <option value="Active">Active</option>
+                   <option value="Closed">Closed</option>
+                 </select>
               </div>
             </div>
           </GlassCard>
@@ -395,11 +394,11 @@ export default function Maintenance() {
               required
               value={vehicleId}
               onChange={(e) => setVehicleId(e.target.value)}
-              className="glass-input w-full text-xs py-2.5 px-3"
+              className="glass-select w-full text-xs py-2.5 px-3"
             >
-              <option value="" className="bg-[#121214]">Choose Eligible Vehicle</option>
+              <option value="">Choose Eligible Vehicle</option>
               {eligibleVehicles.map(v => (
-                <option key={v.id} value={v.id} className="bg-[#121214]">
+                <option key={v.id} value={v.id}>
                   {v.reg_no} - {v.name} (Current: {v.status})
                 </option>
               ))}
@@ -413,13 +412,13 @@ export default function Maintenance() {
                 required
                 value={type}
                 onChange={(e) => setType(e.target.value)}
-                className="glass-input w-full text-xs py-2.5 px-3"
+                className="glass-select w-full text-xs py-2.5 px-3"
               >
-                <option value="Routine" className="bg-[#121214]">Routine Service</option>
-                <option value="Brakes" className="bg-[#121214]">Brake Repairs</option>
-                <option value="Engine" className="bg-[#121214]">Engine Repairs</option>
-                <option value="Electrical" className="bg-[#121214]">Electrical Fixes</option>
-                <option value="Body" className="bg-[#121214]">Body Work</option>
+                <option value="Routine">Routine Service</option>
+                <option value="Brakes">Brake Repairs</option>
+                <option value="Engine">Engine Repairs</option>
+                <option value="Electrical">Electrical Fixes</option>
+                <option value="Body">Body Work</option>
               </select>
             </div>
             <div>

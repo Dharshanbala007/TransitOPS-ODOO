@@ -386,10 +386,9 @@ export default function Trips() {
                 <select
                   value={filterStatus}
                   onChange={(e) => setFilterStatus(e.target.value)}
-                  className="bg-transparent border border-white/10 text-slate-300 text-xs rounded-xl px-3 py-2 outline-none focus:border-[#6E6EF6]/40 transition-all font-medium"
-                  style={{ background: 'rgba(255,255,255,0.03)', backdropFilter: 'blur(8px)' }}
+                  className="glass-select text-slate-300 text-xs font-medium"
                 >
-                  <option value="All" className="bg-[#121214]">All Statuses</option>
+                  <option value="All">All Statuses</option>
                   <option value="Draft" className="bg-[#121214]">Draft</option>
                   <option value="Dispatched" className="bg-[#121214]">Dispatched</option>
                   <option value="Completed" className="bg-[#121214]">Completed</option>
@@ -548,11 +547,11 @@ export default function Trips() {
                 required
                 value={vehicleId}
                 onChange={(e) => setVehicleId(e.target.value)}
-                className="glass-input w-full text-xs py-2.5 px-3"
+                className="glass-select w-full text-xs py-2.5 px-3"
               >
-                <option value="" className="bg-[#121214]">Select Available Vehicle</option>
+                <option value="">Select Available Vehicle</option>
                 {eligibleVehicles.map(v => (
-                  <option key={v.id} value={v.id} className="bg-[#121214]">
+                  <option key={v.id} value={v.id}>
                     {v.reg_no} - {v.name} (Max Load: {v.max_load_kg}kg)
                   </option>
                 ))}
@@ -564,11 +563,11 @@ export default function Trips() {
                 required
                 value={driverId}
                 onChange={(e) => setDriverId(e.target.value)}
-                className="glass-input w-full text-xs py-2.5 px-3"
+                className="glass-select w-full text-xs py-2.5 px-3"
               >
-                <option value="" className="bg-[#121214]">Select Available Driver</option>
+                <option value="">Select Available Driver</option>
                 {eligibleDrivers.map(d => (
-                  <option key={d.id} value={d.id} className="bg-[#121214]">
+                  <option key={d.id} value={d.id}>
                     {d.name} ({d.license_category})
                   </option>
                 ))}

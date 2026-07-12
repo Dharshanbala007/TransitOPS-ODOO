@@ -1,22 +1,23 @@
 import React, { useEffect, useRef, useState } from 'react';
 
 export default function CustomCursor() {
-  const canvasRef = useRef(null);
   const dotRef = useRef(null);
+  const tailRef = useRef(null);
+  
   const [isMobile, setIsMobile] = useState(false);
   const [isVisible, setIsVisible] = useState(false);
+  
+  // Particles state for the white glowing firestick sparks
+  const [particles, setParticles] = useState([]);
 
-  // Mouse tracking
+  // Position LERP tracking refs
   const mouse = useRef({ x: 0, y: 0 });
-  const prevMouse = useRef({ x: 0, y: 0 });
-  const mouseVel = useRef({ x: 0, y: 0 });
   const dot = useRef({ x: 0, y: 0 });
+  const tail = useRef({ x: 0, y: 0 });
 
-  // Simulation arrays
-  const particles = useRef([]);
-  const vortices = useRef([]);
-  const frameCount = useRef(0);
-  const vortexDirection = useRef(1); // Alternates clockwise/counterclockwise
+  // Spring-mass-damper physics variables for squishy slime wobble
+  const stretchPos = useRef(0);
+  const stretchVel = useRef(0);
 
   useEffect(() => {
     // Detect mobile/touch devices
@@ -34,6 +35,23 @@ export default function CustomCursor() {
       mouse.current.x = e.clientX;
       mouse.current.y = e.clientY;
       if (!isVisible) setIsVisible(true);
+
+      // Spawn a new flame particle trail at the mouse position
+      if (Math.random() < 0.5) {
+        setParticles((prev) => [
+          ...prev.slice(-25), // Keep max 25 sparks to protect performance
+          {
+            id: Math.random().toString(),
+            x: e.clientX + (Math.random() - 0.5) * 14,
+            y: e.clientY + (Math.random() - 0.5) * 14,
+            size: Math.random() * 6 + 2.5, // sizes from 2.5px to 8.5px
+            vx: (Math.random() - 0.5) * 1.2,
+            vy: -(Math.random() * 2.0 + 1.5), // rise upwards like fire
+            maxLife: 20 + Math.random() * 10,
+            life: 20 + Math.random() * 10
+          }
+        ]);
+      }
     };
 
     const handleMouseLeave = () => {
@@ -48,165 +66,73 @@ export default function CustomCursor() {
     document.addEventListener('mouseleave', handleMouseLeave);
     document.addEventListener('mouseenter', handleMouseEnter);
 
-    // Canvas setup
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    
-    const resizeCanvas = () => {
-      canvas.width = window.innerWidth;
-      canvas.height = window.innerHeight;
-    };
-    resizeCanvas();
-    window.addEventListener('resize', resizeCanvas);
-
-    // Seed initial position to avoid large jumps
-    dot.current.x = mouse.current.x;
-    dot.current.y = mouse.current.y;
-    prevMouse.current.x = mouse.current.x;
-    prevMouse.current.y = mouse.current.y;
-
-    // Animation physics loop
+    // Animation frame physics loop
     let frameId;
-    const updateSimulation = () => {
-      frameCount.current++;
+    const updatePhysics = () => {
+      // 1. Interpolate Dot (Fast LERP)
+      dot.current.x += (mouse.current.x - dot.current.x) * 0.25;
+      dot.current.y += (mouse.current.y - dot.current.y) * 0.25;
 
-      // 1. Calculate mouse velocity
-      mouseVel.current.x = mouse.current.x - prevMouse.current.x;
-      mouseVel.current.y = mouse.current.y - prevMouse.current.y;
-      const speed = Math.hypot(mouseVel.current.x, mouseVel.current.y);
+      // 2. Interpolate Tail (Slower LERP for trailing whoosh)
+      tail.current.x += (mouse.current.x - tail.current.x) * 0.065;
+      tail.current.y += (mouse.current.y - tail.current.y) * 0.065;
 
-      // 2. Interpolated spawning to avoid gaps in fast movements
-      if (isVisible) {
-        const steps = Math.min(Math.floor(speed / 2.5), 18);
-        for (let i = 0; i <= steps; i++) {
-          const t = steps === 0 ? 1 : i / steps;
-          const x = prevMouse.current.x + (mouse.current.x - prevMouse.current.x) * t;
-          const y = prevMouse.current.y + (mouse.current.y - prevMouse.current.y) * t;
-
-          // Spawn fluid trail particles
-          particles.current.push({
-            id: Math.random().toString(),
-            x: x + (Math.random() - 0.5) * 4,
-            y: y + (Math.random() - 0.5) * 4,
-            vx: mouseVel.current.x * 0.12 + (Math.random() - 0.5) * 0.8,
-            vy: mouseVel.current.y * 0.12 + (Math.random() - 0.5) * 0.8,
-            life: 55 + Math.random() * 25,
-            maxLife: 55 + Math.random() * 25,
-            size: 16 + Math.random() * 8
-          });
-        }
-
-        // Spawn a subtle vortex if moving quickly
-        if (speed > 8 && frameCount.current % 2 === 0) {
-          vortexDirection.current *= -1; // alternate rotation
-          vortices.current.push({
-            x: mouse.current.x,
-            y: mouse.current.y,
-            vx: mouseVel.current.x * 0.15,
-            vy: mouseVel.current.y * 0.15,
-            strength: vortexDirection.current * (speed * 0.14),
-            radius: 95 + Math.random() * 40,
-            life: 35
-          });
-        }
-      }
-
-      // 3. Update Vortices (decay strength and drift)
-      vortices.current.forEach((v) => {
-        v.x += v.vx;
-        v.y += v.vy;
-        v.vx *= 0.94;
-        v.vy *= 0.94;
-        v.strength *= 0.92;
-        v.life--;
-      });
-      vortices.current = vortices.current.filter((v) => v.life > 0);
-
-      // 4. Update Particles (apply vortex forces, buoyancy, Perlin-like noise, and friction)
-      const time = Date.now() * 0.0035;
-      particles.current.forEach((p) => {
-        // Apply forces from all active vortices
-        vortices.current.forEach((v) => {
-          const dx = p.x - v.x;
-          const dy = p.y - v.y;
-          const dist = Math.hypot(dx, dy) + 0.1;
-          if (dist < v.radius) {
-            // Distance-based linear falloff
-            const factor = (1 - dist / v.radius) * v.strength;
-            // Perpendicular swirl vector
-            const rx = -dy / dist;
-            const ry = dx / dist;
-            p.vx += rx * factor * 0.28;
-            p.vy += ry * factor * 0.28;
-          }
-        });
-
-        // Slow upward drift / buoyancy
-        p.vy -= 0.05;
-
-        // Add periodic fluid-like wave simulation (low frequency noise)
-        p.vx += Math.sin(p.y * 0.015 + time) * 0.12;
-        p.vy += Math.cos(p.x * 0.015 + time) * 0.12;
-
-        // Apply friction/air damping
-        p.vx *= 0.955;
-        p.vy *= 0.955;
-
-        // Update positions & size (grows as it diffuses/spreads)
-        p.x += p.vx;
-        p.y += p.vy;
-        p.size += 0.45;
-        p.life--;
-      });
-      particles.current = particles.current.filter((p) => p.life > 0);
-
-      // 5. Draw simulation on Canvas
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      ctx.globalCompositeOperation = 'screen';
-
-      particles.current.forEach((p) => {
-        const ageRatio = p.life / p.maxLife; // 1 to 0
-        const radius = p.size;
-        const opacity = ageRatio * 0.35; // Soft glow blending
-
-        // Create volumetric fluid-like radial gradient
-        const grad = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, radius);
-        
-        // Glowing white core
-        grad.addColorStop(0, `rgba(255, 255, 255, ${opacity})`);
-        // Smooth transition to cyan/teal highlight
-        grad.addColorStop(0.2, `rgba(255, 255, 255, ${opacity * 0.95})`);
-        grad.addColorStop(0.4, `rgba(180, 248, 250, ${opacity * 0.65})`); // cyan tint
-        grad.addColorStop(0.7, `rgba(34, 211, 238, ${opacity * 0.2})`);  // outer glow
-        grad.addColorStop(1, 'rgba(34, 211, 238, 0)');                   // transparent
-
-        ctx.fillStyle = grad;
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, radius, 0, Math.PI * 2);
-        ctx.fill();
-      });
-
-      // 6. Update responsive DOM red dot cursor
-      dot.current.x += (mouse.current.x - dot.current.x) * 0.35;
-      dot.current.y += (mouse.current.y - dot.current.y) * 0.35;
-
+      // Apply transforms directly to DOM elements
       if (dotRef.current) {
         dotRef.current.style.transform = `translate3d(${dot.current.x}px, ${dot.current.y}px, 0) translate3d(-50%, -50%, 0)`;
       }
 
-      // Store previous mouse position
-      prevMouse.current.x = mouse.current.x;
-      prevMouse.current.y = mouse.current.y;
+      if (tailRef.current) {
+        const dx = mouse.current.x - tail.current.x;
+        const dy = mouse.current.y - tail.current.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        const angle = Math.atan2(dy, dx) * (180 / Math.PI);
 
-      frameId = requestAnimationFrame(updateSimulation);
+        // --- Mass-Spring-Damper Simulation for Slime/Sponge Wobble ---
+        // targetStretch is the static stretch based on speed
+        const targetStretch = Math.min(distance * 0.007, 0.75);
+        
+        // F = -k * x
+        const force = -200 * (stretchPos.current - targetStretch);
+        
+        // Acceleration = Force - damping * velocity
+        // Update velocity (dt is assumed 1/60s = 0.016)
+        stretchVel.current += (force - 10 * stretchVel.current) * 0.016;
+        
+        // Update position
+        stretchPos.current += stretchVel.current * 0.016;
+
+        // Apply scale factors (ensure scale never drops below 0.2)
+        const scaleX = Math.max(0.2, 1 + stretchPos.current);
+        const scaleY = Math.max(0.2, 1 - stretchPos.current * 0.4);
+
+        tailRef.current.style.transform = `
+          translate3d(${tail.current.x}px, ${tail.current.y}px, 0) 
+          translate3d(-50%, -50%, 0) 
+          rotate(${angle}deg) 
+          scale(${scaleX}, ${scaleY})
+        `;
+      }
+
+      // Update particle positions (sparks rise and fade)
+      setParticles((prev) =>
+        prev
+          .map((p) => ({
+            ...p,
+            x: p.x + p.vx,
+            y: p.y + p.vy,
+            life: p.life - 1
+          }))
+          .filter((p) => p.life > 0)
+      );
+
+      frameId = requestAnimationFrame(updatePhysics);
     };
 
-    frameId = requestAnimationFrame(updateSimulation);
+    frameId = requestAnimationFrame(updatePhysics);
 
     return () => {
       window.removeEventListener('resize', touchCheck);
-      window.removeEventListener('resize', resizeCanvas);
       window.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseleave', handleMouseLeave);
       document.removeEventListener('mouseenter', handleMouseEnter);
@@ -218,18 +144,54 @@ export default function CustomCursor() {
 
   return (
     <div className={`fixed inset-0 w-full h-full pointer-events-none z-[9999] transition-opacity duration-500 ${isVisible ? 'opacity-100' : 'opacity-0'}`}>
-      {/* Fluid Smoke Trail Canvas */}
-      <canvas ref={canvasRef} className="absolute inset-0 w-full h-full pointer-events-none" />
+      
+      {/* 1. Flickering White Flame Sparks (Firestick Effect) */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden mix-blend-screen">
+        {particles.map((p) => {
+          const ratio = p.life / p.maxLife;
+          return (
+            <div
+              key={p.id}
+              className="absolute rounded-full bg-white pointer-events-none"
+              style={{
+                left: p.x,
+                top: p.y,
+                width: p.size,
+                height: p.size,
+                opacity: ratio * 0.85,
+                transform: `translate3d(-50%, -50%, 0) scale(${ratio})`,
+                boxShadow: '0 0 6px #ffffff, 0 0 12px #ffffff, 0 0 20px rgba(255,255,255,0.6)',
+                willChange: 'transform, opacity'
+              }}
+            />
+          );
+        })}
+      </div>
 
-      {/* Tactile Red Dot Cursor (matching the image) */}
+      {/* 2. Crescent Whooshy Comet Tail (Asymmetric thick border + heavy blur) */}
+      <div 
+        ref={tailRef}
+        className="absolute w-36 h-36 rounded-full pointer-events-none mix-blend-screen"
+        style={{
+          background: 'transparent',
+          border: '16px solid transparent',
+          borderLeft: '22px solid rgba(255, 255, 255, 0.45)', // white glowing crescent
+          borderBottom: '22px solid rgba(6, 182, 212, 0.18)', // cyan sweep highlight
+          boxShadow: 'inset 12px -12px 30px rgba(255, 255, 255, 0.15)',
+          filter: 'blur(9px)',
+          willChange: 'transform'
+        }}
+      />
+
+      {/* 3. Tactile Cursor Pointer (Pinkish-beige dot matching the photo) */}
       <div 
         ref={dotRef}
-        className="absolute w-2.5 h-2.5 rounded-full pointer-events-none bg-[#7a2b21] border border-[#a84437]/40 shadow-[0_0_12px_rgba(122,43,33,0.9)]"
+        className="absolute w-2 h-2 rounded-full pointer-events-none bg-[#e4b5a2] shadow-[0_0_8px_rgba(228,181,162,0.6)]"
         style={{
           willChange: 'transform'
         }}
       />
+
     </div>
   );
 }
-

@@ -6,6 +6,8 @@ import vehicleRoutes from './routes/vehicles.js';
 import driverRoutes from './routes/drivers.js';
 import tripRoutes from './routes/trips.js';
 import maintenanceRoutes from './routes/maintenance.js';
+import expenseRoutes from './routes/expenses.js';
+import reportRoutes from './routes/reports.js';
 
 dotenv.config();
 
@@ -31,6 +33,8 @@ app.use('/api/vehicles', vehicleRoutes);
 app.use('/api/drivers', driverRoutes);
 app.use('/api/trips', tripRoutes);
 app.use('/api/maintenance', maintenanceRoutes);
+app.use('/api/expenses', expenseRoutes);
+app.use('/api/reports', reportRoutes);
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {

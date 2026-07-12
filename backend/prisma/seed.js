@@ -6,7 +6,11 @@ const prisma = new PrismaClient();
 async function main() {
   console.log('Seeding database...');
 
-  // 1. Clean existing data
+  // 1. Clean existing data (deleting children/dependencies first)
+  await prisma.fuelLog.deleteMany({});
+  await prisma.expense.deleteMany({});
+  await prisma.maintenanceLog.deleteMany({});
+  await prisma.trip.deleteMany({});
   await prisma.user.deleteMany({});
   await prisma.vehicle.deleteMany({});
   await prisma.driver.deleteMany({});
@@ -44,6 +48,27 @@ async function main() {
       role: 'FinancialAnalyst'
     }
   ];
+
+  // Programmatically generate 50 additional mock users for cybersecurity and scale testing
+  const roles = ['FleetManager', 'Driver', 'SafetyOfficer', 'FinancialAnalyst'];
+  const firstNames = ['James', 'Mary', 'John', 'Patricia', 'Robert', 'Jennifer', 'Michael', 'Linda', 'William', 'Elizabeth', 'David', 'Barbara', 'Richard', 'Susan', 'Joseph', 'Jessica', 'Thomas', 'Sarah', 'Charles', 'Karen'];
+  const lastNames = ['Smith', 'Johnson', 'Williams', 'Brown', 'Jones', 'Garcia', 'Miller', 'Davis', 'Rodriguez', 'Martinez', 'Hernandez', 'Lopez', 'Gonzalez', 'Wilson', 'Anderson', 'Thomas', 'Taylor', 'Moore', 'Jackson', 'Martin'];
+
+  for (let i = 1; i <= 50; i++) {
+    const fn = firstNames[(i * 3) % firstNames.length];
+    const ln = lastNames[(i * 7) % lastNames.length];
+    const role = roles[i % roles.length];
+    const email = `user${i}@transitops.com`;
+    const passwordText = `password${i}`;
+    const passwordHash = await bcrypt.hash(passwordText, salt);
+    
+    users.push({
+      email,
+      password: passwordHash,
+      name: `${fn} ${ln} (${role})`,
+      role
+    });
+  }
 
   for (const u of users) {
     await prisma.user.create({ data: u });

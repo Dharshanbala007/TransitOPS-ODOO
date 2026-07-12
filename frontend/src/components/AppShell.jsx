@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { NavLink, useNavigate, useLocation } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { 
   LayoutDashboard, 
   Car, 
@@ -13,7 +13,9 @@ import {
   User as UserIcon,
   ShieldCheck,
   Activity,
-  Database
+  Database,
+  Menu,
+  X
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
@@ -33,9 +35,11 @@ export default function AppShell({ children }) {
     { name: 'Driver Management', path: '/drivers', icon: Users },
     { name: 'Trip Management', path: '/trips', icon: Route },
     { name: 'Maintenance', path: '/maintenance', icon: Wrench },
-    { name: 'Fuel & Expenses', path: '/expenses', icon: Fuel, placeholder: true },
-    { name: 'Reports', path: '/reports', icon: BarChart3, placeholder: true },
+    { name: 'Fuel & Expenses', path: '/expenses', icon: Fuel },
+    { name: 'Reports', path: '/reports', icon: BarChart3 },
   ];
+
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   const formatRole = (role) => {
     switch (role) {
@@ -48,10 +52,94 @@ export default function AppShell({ children }) {
   };
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden p-4 gap-4 bg-transparent relative z-10">
+    <div className="flex flex-col md:flex-row h-screen w-screen overflow-hidden p-2 md:p-4 gap-4 bg-transparent relative z-10">
+      
+      {/* Mobile Top Header Bar */}
+      <div 
+        className="flex md:hidden items-center justify-between p-4 border border-white/10 shrink-0"
+        style={{
+          background: 'var(--glass-fill)',
+          backdropFilter: 'blur(28px) saturate(140%)',
+          WebkitBackdropFilter: 'blur(28px) saturate(140%)',
+          borderRadius: '20px',
+          boxShadow: '0 8px 24px var(--shadow-ambient), inset 0 1px 0 var(--glass-highlight)'
+        }}
+      >
+        <div className="flex items-center gap-2">
+          <div className="h-8 w-8 rounded-lg flex items-center justify-center border border-white/15 bg-white/5">
+            <Car className="h-4.5 w-4.5 text-[#6E6EF6]" />
+          </div>
+          <div>
+            <h1 className="font-bold text-xs tracking-wider text-white">TransitOps</h1>
+            <span className="text-[7.5px] text-slate-400 uppercase tracking-widest font-semibold block -mt-0.5">Fleet Console</span>
+          </div>
+        </div>
+
+        <button 
+          onClick={() => setIsMenuOpen(!isMenuOpen)} 
+          className="p-1.5 rounded-lg border border-white/10 bg-white/5 text-slate-300 active:scale-95 transition-all"
+        >
+          {isMenuOpen ? <X className="h-4.5 w-4.5" /> : <Menu className="h-4.5 w-4.5" />}
+        </button>
+      </div>
+
+      {/* Mobile Overlay Menu Drawer */}
+      <AnimatePresence>
+        {isMenuOpen && (
+          <motion.div 
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+            className="absolute top-20 left-2 right-2 z-50 p-4 border border-white/10 rounded-2xl bg-[#09090b]/95 backdrop-blur-3xl flex flex-col gap-4 shadow-2xl md:hidden"
+            style={{
+              boxShadow: '0 24px 50px rgba(0,0,0,0.8)'
+            }}
+          >
+            <nav className="flex flex-col gap-1.5">
+              {navItems.map((item) => {
+                const isActive = location.pathname === item.path;
+                return (
+                  <NavLink
+                    key={item.name}
+                    to={item.path}
+                    onClick={() => setIsMenuOpen(false)}
+                    className={`flex items-center gap-3 px-4 py-2.5 rounded-xl text-xs font-semibold tracking-wide border border-transparent ${
+                      isActive ? 'text-white bg-white/10 border-white/10' : 'text-slate-400'
+                    }`}
+                  >
+                    <item.icon className="h-4.5 w-4.5 text-[#6E6EF6]" />
+                    <span>{item.name}</span>
+                  </NavLink>
+                );
+              })}
+            </nav>
+            
+            {user && (
+              <div className="pt-3 border-t border-white/5 flex items-center justify-between">
+                <div className="flex items-center gap-2 min-w-0">
+                  <div className="h-8 w-8 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-slate-300">
+                    <UserIcon className="h-4 w-4" />
+                  </div>
+                  <div className="flex flex-col min-w-0">
+                    <h4 className="text-xs font-bold text-white truncate">{user.name}</h4>
+                    <p className="text-[9px] text-slate-400 truncate">{formatRole(user.role)}</p>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => { setIsMenuOpen(false); handleLogout(); }}
+                  className="text-xs text-red-400 font-bold uppercase tracking-wider px-3 py-1.5 bg-red-500/10 rounded-lg border border-red-500/10 active:scale-95 transition-all"
+                >
+                  Sign Out
+                </button>
+              </div>
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
       
       {/* Left Sidebar - Stacked Glass Modules */}
-      <div className="w-64 flex flex-col gap-4 shrink-0 h-full bg-transparent">
+      <div className="hidden md:flex w-64 flex-col gap-4 shrink-0 h-full bg-transparent">
         
         {/* Module 1: Brand Logo */}
         <div 
@@ -151,23 +239,7 @@ export default function AppShell({ children }) {
             </div>
           )}
 
-          {/* Health Stats */}
-          <div className="space-y-2 text-[9px] font-bold text-slate-400 tracking-wider uppercase">
-            <div className="flex items-center justify-between">
-              <span className="flex items-center gap-1.5">
-                <Activity className="h-3 w-3 text-emerald-400" />
-                API PING
-              </span>
-              <span className="text-emerald-400 font-mono">12ms</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="flex items-center gap-1.5">
-                <Database className="h-3 w-3 text-[#6E6EF6]" />
-                DATABASE
-              </span>
-              <span className="text-[#6E6EF6] font-mono">MYSQL</span>
-            </div>
-          </div>
+
         </div>
       </div>
 

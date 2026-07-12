@@ -24,9 +24,11 @@ export default function PrimaryButton({ children, onClick, type = 'button', disa
       disabled={disabled}
       className={`relative text-white font-medium py-2.5 px-6 rounded-full overflow-hidden transition-colors duration-300 disabled:opacity-50 disabled:pointer-events-none flex items-center justify-center gap-2 ${className}`}
       style={{
-        background: 'linear-gradient(180deg, rgba(110, 110, 246, 0.85) 0%, var(--accent) 100%)',
-        border: '1px solid rgba(255, 255, 255, 0.15)',
-        boxShadow: '0 4px 12px rgba(110, 110, 246, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.3)'
+        background: 'linear-gradient(135deg, rgba(110, 110, 246, 0.3) 0%, rgba(110, 110, 246, 0.1) 100%)',
+        backdropFilter: 'blur(12px)',
+        WebkitBackdropFilter: 'blur(12px)',
+        border: '1px solid rgba(110, 110, 246, 0.45)',
+        boxShadow: '0 8px 24px rgba(110, 110, 246, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.2)'
       }}
     >
       {children}

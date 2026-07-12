@@ -463,7 +463,137 @@ async function runTests() {
     console.error('❌ Test 13 Failed with error:', err.message);
   }
 
-  console.log('--- ALL TRIP & MAINTENANCE TESTS COMPLETED ---');
+  // --- MEMBER 3: DASHBOARD, REPORTS & EXPENSES VERIFICATION TESTS ---
+  console.log('\n--- STARTING DASHBOARD, REPORTS & EXPENSES TESTS ---');
+
+  // Test 14: Dashboard stats endpoint & filters
+  try {
+    const res = await fetch(`${host}/reports/dashboard-stats?type=All&status=All&region=All`, {
+      headers: { 'Authorization': `Bearer ${managerToken}` }
+    });
+    const data = await res.json();
+    if (res.ok && data.statusDistribution !== undefined && data.utilization !== undefined) {
+      console.log(`✔ Test 14: Dashboard stats retrieved successfully. Utilization: ${data.utilization.toFixed(1)}%, Available: ${data.availableVehicles}, Active Trips: ${data.activeTrips}`);
+    } else {
+      console.error('❌ Test 14: Failed to retrieve dashboard stats:', data.error);
+    }
+  } catch (err) {
+    console.error('❌ Test 14 Failed with error:', err.message);
+  }
+
+  // Test 15: Vehicle performance reporting & calculations
+  try {
+    const res = await fetch(`${host}/reports/vehicle-performance`, {
+      headers: { 'Authorization': `Bearer ${managerToken}` }
+    });
+    const data = await res.json();
+    if (res.ok && Array.isArray(data.performance) && data.totals) {
+      console.log(`✔ Test 15a: Vehicle performance reports retrieved successfully. Overall Utilization: ${data.totals.overallUtilization.toFixed(1)}%`);
+      
+      if (data.performance.length > 0) {
+        const testV = data.performance[0];
+        console.log(`✔ Test 15b: Aggregates for ${testV.reg_no} -> Revenue: $${testV.revenue}, Operational Cost: $${testV.operational_cost}, ROI: ${testV.roi.toFixed(1)}%`);
+      }
+    } else {
+      console.error('❌ Test 15a: Failed to retrieve performance reports:', data.error);
+    }
+  } catch (err) {
+    console.error('❌ Test 15 Failed with error:', err.message);
+  }
+
+  // Test 16: Log Fuel Run (Success for Manager, 403 Forbidden for Driver)
+  try {
+    // 16a. Driver tries to log fuel (should be blocked)
+    const blockRes = await fetch(`${host}/expenses/fuel-logs`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${driverToken}`
+      },
+      body: JSON.stringify({
+        vehicle_id: testVehicleId,
+        liters: 60.5,
+        cost: 95.0
+      })
+    });
+    const blockData = await blockRes.json();
+    if (blockRes.status === 403) {
+      console.log(`✔ Test 16a: Driver correctly blocked from logging fuel (403 Forbidden). Error message: "${blockData.error}"`);
+    } else {
+      console.error('❌ Test 16a: Driver was not blocked from logging fuel. Status:', blockRes.status);
+    }
+
+    // 16b. Manager logs fuel successfully
+    const successRes = await fetch(`${host}/expenses/fuel-logs`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${managerToken}`
+      },
+      body: JSON.stringify({
+        vehicle_id: testVehicleId,
+        liters: 60.5,
+        cost: 95.0
+      })
+    });
+    const successData = await successRes.json();
+    if (successRes.ok && successData.liters === 60.5) {
+      console.log(`✔ Test 16b: Manager successfully logged a fuel run of ${successData.liters}L (Cost: $${successData.cost}) for ${successData.vehicle.reg_no}.`);
+    } else {
+      console.error('❌ Test 16b: Manager failed to log fuel run:', successData.error);
+    }
+  } catch (err) {
+    console.error('❌ Test 16 Failed with error:', err.message);
+  }
+
+  // Test 17: Log Expense (Success for Manager, 403 Forbidden for Driver)
+  try {
+    // 17a. Driver tries to log expense (should be blocked)
+    const blockRes = await fetch(`${host}/expenses/expenses`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${driverToken}`
+      },
+      body: JSON.stringify({
+        vehicle_id: testVehicleId,
+        category: 'Toll',
+        amount: 25.0,
+        notes: 'Highway toll charge.'
+      })
+    });
+    const blockData = await blockRes.json();
+    if (blockRes.status === 403) {
+      console.log(`✔ Test 17a: Driver correctly blocked from logging expenses (403 Forbidden). Error message: "${blockData.error}"`);
+    } else {
+      console.error('❌ Test 17a: Driver was not blocked from logging expenses. Status:', blockRes.status);
+    }
+
+    // 17b. Manager logs expense successfully
+    const successRes = await fetch(`${host}/expenses/expenses`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${managerToken}`
+      },
+      body: JSON.stringify({
+        vehicle_id: testVehicleId,
+        category: 'Toll',
+        amount: 25.0,
+        notes: 'Highway toll charge.'
+      })
+    });
+    const successData = await successRes.json();
+    if (successRes.ok && successData.amount === 25.0) {
+      console.log(`✔ Test 17b: Manager successfully logged a $${successData.amount} (${successData.category}) expense for ${successData.vehicle.reg_no}.`);
+    } else {
+      console.error('❌ Test 17b: Manager failed to log expense:', successData.error);
+    }
+  } catch (err) {
+    console.error('❌ Test 17 Failed with error:', err.message);
+  }
+
+  console.log('--- ALL DASHBOARD, REPORTS & EXPENSES TESTS COMPLETED ---');
   console.log('--- ALL API TESTS COMPLETED ---');
 }
 

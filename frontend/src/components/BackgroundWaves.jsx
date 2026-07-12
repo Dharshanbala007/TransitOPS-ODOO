@@ -16,7 +16,7 @@ export default function BackgroundWaves() {
       <div 
         className="absolute inset-0 w-full h-full"
         style={{
-          backgroundImage: isLoginPage ? "url('/black_shards_bg.png')" : "url('/gemini-watermark-removed.png')",
+          backgroundImage: isLoginPage ? "url('/images/black_shards_bg.png')" : "url('/images/dashboard_bg.png')",
           backgroundSize: 'cover',
           backgroundPosition: 'center',
           backgroundRepeat: 'no-repeat',

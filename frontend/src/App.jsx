@@ -5,9 +5,11 @@ import ProtectedRoute from './components/ProtectedRoute';
 import Login from './pages/Login';
 import Vehicles from './pages/Vehicles';
 import Drivers from './pages/Drivers';
-import DashboardPlaceholder from './pages/DashboardPlaceholder';
+import Dashboard from './pages/Dashboard';
 import Trips from './pages/Trips';
 import Maintenance from './pages/Maintenance';
+import Expenses from './pages/Expenses';
+import Reports from './pages/Reports';
 import BackgroundWaves from './components/BackgroundWaves';
 import GlassCard from './components/GlassCard';
 import { Wrench } from 'lucide-react';
@@ -46,7 +48,7 @@ export default function App() {
             path="/" 
             element={
               <ProtectedRoute>
-                <DashboardPlaceholder />
+                <Dashboard />
               </ProtectedRoute>
             } 
           />
@@ -91,7 +93,7 @@ export default function App() {
             path="/expenses" 
             element={
               <ProtectedRoute>
-                <ComingSoon title="Fuel & Expense Logging" member="3" />
+                <Expenses />
               </ProtectedRoute>
             } 
           />
@@ -100,7 +102,7 @@ export default function App() {
             path="/reports" 
             element={
               <ProtectedRoute>
-                <ComingSoon title="Reports & Analytics Aggregations" member="3" />
+                <Reports />
               </ProtectedRoute>
             } 
           />

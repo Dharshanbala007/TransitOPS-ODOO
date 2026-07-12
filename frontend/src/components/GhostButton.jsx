@@ -25,9 +25,11 @@ export default function GhostButton({ children, onClick, type = 'button', disabl
       disabled={disabled}
       className={`font-medium py-2.5 px-6 rounded-full text-slate-300 transition-colors duration-300 disabled:opacity-50 disabled:pointer-events-none flex items-center justify-center gap-2 ${className}`}
       style={{
-        background: 'var(--glass-fill)',
-        border: '1px solid var(--glass-border)',
-        boxShadow: 'inset 0 1px 0 var(--glass-highlight)'
+        background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.01) 100%)',
+        backdropFilter: 'blur(8px)',
+        WebkitBackdropFilter: 'blur(8px)',
+        border: '1px solid rgba(255, 255, 255, 0.1)',
+        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.05)'
       }}
     >
       {children}
